@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#C2A278">
+<title>Mian Tiles Inventory</title>
+<link rel="manifest" href="manifest.webmanifest">
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+<style>
+:root{
+  --primary: #C2A278;
+  --primary-dark: #A8865B;
+  --primary-light: #F1E8DB;
+  --secondary: #8C7A6B;
+  --bg: #F5EFE9;
+  --surface: #FFFDFC;
+  --text-main: #3A3330;
+  --text-muted: #7A716C;
+  --line: #E6DED6;
+  --red: #B5483A;
+  --radius: 8px;
+  
+  --shadow-1: 0 2px 6px rgba(100, 85, 70, 0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+  --shadow-2: 0 6px 16px rgba(100, 85, 70, 0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+  --shadow-3: 0 10px 24px rgba(100, 85, 70, 0.15);
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: var(--bg); 
+  color: var(--text-main); 
+  font-size: 14px; 
+  line-height: 1.5;
+  
+  background-image: 
+    linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%),
+    linear-gradient(to right, rgba(200, 185, 170, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(200, 185, 170, 0.15) 1px, transparent 1px);
+  background-size: 100% 100%, 100px 100px, 100px 100px;
+  background-position: 0 0, 0 0, 0 0;
+}
+#app{display:flex; min-height:100vh;}
+
+#sidebar{
+  width:250px; 
+  background: #2E2824;
+  flex-shrink:0;
+  display:flex; 
+  flex-direction:column; 
+  position:sticky; 
+  top:0; 
+  height:100vh;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1); 
+  z-index: 10; 
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#sidebar.desktop-hidden { margin-left: -250px; }
+#sidebar .brand{
+  padding: 24px 20px 20px 70px; 
+  font-size:20px; 
+  font-weight:600; 
+  color:var(--primary); 
+  border-bottom:1px solid #3D3530; 
+  display: flex; 
+  align-items: center; 
+  gap: 10px;
+  letter-spacing: 0.5px;
+}
+#sidebar .brand img { height: 32px; border-radius: 4px; }
+#sidebar nav{padding:16px 12px; display:flex; flex-direction:column; gap:4px; overflow-y:auto;}
+#sidebar a{
+  color:#A69B91; 
+  text-decoration:none; 
+  padding:12px 16px; 
+  border-radius:var(--radius); 
+  font-size:14px; 
+  font-weight:500; 
+  display:flex; 
+  gap:12px; 
+  align-items:center; 
+  transition: all 0.2s ease;
+}
+#sidebar a:hover{background:#3D3530; color:#FFFDFC;}
+#sidebar a.active{background:var(--primary-light); color:var(--primary-dark); font-weight:600;}
+#sidebar .foot{margin-top:auto; padding:16px 20px; font-size:12px; color:#7A716C; border-top: 1px solid #3D3530;}
+
+#menuBtn{
+  display: flex; position: fixed; top: 16px; left: 16px; z-index: 60;
+  background: var(--primary); border: none; border-radius: 50%; width: 48px; height: 48px;
+  align-items: center; justify-content: center; cursor: pointer; color: white;
+  box-shadow: var(--shadow-2); transition: all 0.2s ease;
+}
+#menuBtn:hover { background: var(--primary-dark); box-shadow: var(--shadow-3); }
+#overlay{display:none; position:fixed; inset:0; background:rgba(46,40,36,.6); z-index:40; backdrop-filter: blur(2px);}
+
+#main{flex:1; padding: 84px 32px 60px 32px; max-width:1200px; width:100%; margin:0 auto;}
+h1{font-size:26px; font-weight:600; margin-bottom:24px; color:var(--text-main); letter-spacing: -0.5px;}
+h2{font-size:18px; font-weight:600; margin:32px 0 16px; color: var(--text-main);}
+h3{font-size:16px; font-weight:600;}
+.page{display:none;}
+.page.active{display:block; animation:fadeIn .3s ease forwards;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+#backNav { margin-top: 0; margin-bottom: 24px; }
+#backNav .btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13px;
+  background: var(--surface); color: var(--primary-dark); border-radius: 20px; box-shadow: var(--shadow-1); transition: all 0.2s;}
+#backNav .btn:hover { box-shadow: var(--shadow-2); background: var(--primary-light); }
+
+.cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:32px;}
+.metric{
+  background:var(--surface); 
+  border-radius:var(--radius); 
+  padding:20px;
+  box-shadow: var(--shadow-1); 
+  border: 1px solid var(--line);
+  transition: transform 0.2s ease, box-shadow 0.2s ease; 
+  position: relative; 
+  overflow: hidden;
+}
+.metric:hover { transform: translateY(-4px); box-shadow: var(--shadow-2);}
+.metric .label{font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; font-weight:600;}
+.metric .value{font-size:2rem; font-weight:700; margin-top:8px; color:var(--primary-dark);}
+.metric .icon { font-size: 2rem; position: absolute; right: 20px; top: 20px; opacity: 0.15; color: var(--primary); }
+
+.panel{
+  background:var(--surface); 
+  border-radius:var(--radius); 
+  padding:24px; 
+  margin-bottom:24px; 
+  box-shadow: var(--shadow-1); 
+  border: 1px solid var(--line);
+}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+@media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+
+.bar-row{display:flex; align-items:center; gap:12px; margin:12px 0;}
+.bar-row .cat{flex:0 0 120px; font-size:13px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-muted);}
+.bar-row .track{flex:1; background:var(--bg); border-radius:4px; height:16px; overflow:hidden; border: 1px solid var(--line);}
+.bar-row .fill{height:100%; background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius:3px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);}
+.bar-row .amt{flex:0 0 90px; font-size:13px; font-weight:600; text-align:right;}
+.donut-wrap{display:flex; align-items:center; gap:32px; flex-wrap:wrap;}
+.legend div{display:flex; align-items:center; gap:12px; font-size:14px; margin:8px 0; color:var(--text-muted);}
+.legend .dot{width:14px; height:14px; border-radius:50%; display:inline-block;}
+
+.tablewrap{overflow-x:auto; background:var(--surface); border-radius:var(--radius); box-shadow: var(--shadow-1); border: 1px solid var(--line);}
+table{width:100%; border-collapse:collapse; font-size:14px; min-width:600px;}
+th{background:var(--bg); text-align:left; padding:16px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); border-bottom:1px solid var(--line);}
+td{padding:16px; border-bottom:1px solid var(--line); color:var(--text-main); vertical-align: middle;}
+tr:last-child td { border-bottom: none; }
+tr:hover td{background:#F9F6F2;}
+.badge{display:inline-block; padding:4px 12px; border-radius:16px; font-size:12px; font-weight:600;}
+.badge.ok{background:#E8F0EC; color:#3E6953;}
+.badge.low{background:#FCF3E2; color:#A8865B;}
+.badge.out{background:#F9E8E6; color:#B5483A;}
+.empty-msg{color:var(--text-muted); padding:24px; text-align: center; font-style: italic;}
+.caption{color:var(--text-muted); font-size:13px; margin:12px 0;}
+
+.form-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+.form-grid .full{grid-column:1/-1;}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.form-grid{grid-template-columns:1fr;}}
+label{display:block; font-size:12px; font-weight:600; margin-bottom:6px; color:var(--text-muted);}
+input,select,textarea{
+  width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius);
+  font-size:14px; background:var(--surface); color:var(--text-main); font-family:inherit; 
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--primary); outline:none; box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content: center; gap:8px; border:none; border-radius:var(--radius); 
+  padding:10px 24px; font-size:14px; font-weight:600; letter-spacing: 0.5px; cursor:pointer; text-transform: uppercase;
+  background:var(--primary); color:#fff; box-shadow: var(--shadow-1); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn:hover{background:var(--primary-dark); box-shadow: var(--shadow-2);}
+.btn:active{box-shadow: none; transform: translateY(1px);}
+.btn.secondary{background:var(--bg); color:var(--text-main); box-shadow: none; border: 1px solid var(--line);}
+.btn.secondary:hover{background:#EBE4DB; box-shadow: var(--shadow-1);}
+.btn.danger{background:var(--red);}
+.btn.danger:hover{background:#9E3F33;}
+.btn.sm{padding:6px 16px; font-size:12px; border-radius: 4px;}
+.btn.orange { background: var(--secondary); color: white; }
+.btn.orange:hover { background: #7A6A5D; }
+
+.row{display:flex; gap:16px; flex-wrap:wrap; align-items:center;}
+.filters{display:grid; grid-template-columns:2fr 2fr 2fr; gap:16px; margin-bottom:20px;}
+@media(max-width:700px){.filters{grid-template-columns:1fr;}}
+
+.quick-actions { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+
+#toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:#3A3330; color:#fff; padding:14px 24px; border-radius:4px; font-size:14px; font-weight:500;
+  opacity:0; pointer-events:none; transition:all .3s cubic-bezier(0.4, 0, 0.2, 1); z-index:100; box-shadow: var(--shadow-3);
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+#toast.error{background:var(--red);}
+
+@media(max-width:820px){
+  #sidebar{position:fixed; left:-260px; z-index:50; transition:left .3s ease; margin-left: 0;}
+  #sidebar.open{left:0;}
+  #overlay.show{display:block;}
+  #main{padding:80px 16px 40px;}
+  h1{font-size:22px;}
+}
+
+/* ---------- Print Logic Fixed ---------- */
+@media print {
+  /* Hide everything else */
+  body.printing-slip #app, 
+  body.printing-slip #menuBtn, 
+  body.printing-slip #overlay, 
+  body.printing-slip #toast { 
+    display: none !important; 
+  }
+  
+  /* Show ONLY the receipt slip */
+  body.printing-slip #print-slip { 
+    display: block !important; 
+    position: absolute;
+    top: 0; left: 0; width: 100%;
+  }
+
+  /* Inventory Print Mode */
+  body:not(.printing-slip) #sidebar, 
+  body:not(.printing-slip) #menuBtn, 
+  body:not(.printing-slip) .btn,
+  body:not(.printing-slip) .filters, 
+  body:not(.printing-slip) #main h2, 
+  body:not(.printing-slip) .panel,
+  body:not(.printing-slip) #toast, 
+  body:not(.printing-slip) .caption, 
+  body:not(.printing-slip) .foot,
+  body:not(.printing-slip) #print-slip { 
+    display: none !important; 
+  }
+  body:not(.printing-slip) #main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+  body:not(.printing-slip) .tablewrap { border: none !important; overflow: visible !important; box-shadow: none !important;}
+  body:not(.printing-slip) table { width: 100% !important; min-width: 100% !important; }
+  body:not(.printing-slip) th, body:not(.printing-slip) td { border: 1px solid #000 !important; padding: 8px !important; font-size: 12px !important; }
+}
+</style>
+</head>
+<body>
+<button id="menuBtn" aria-label="Toggle Menu">
+  <span class="material-icons">menu</span>
+</button>
+<div id="overlay"></div>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <img src="/image.jpeg" alt="Logo" style="height: 35px; width: auto; border-radius: 4px;">
+      <span>Mian Tiles</span>
+    </div>
+    <nav id="nav">
+      <a href="#retail" data-page="retail"><span class="material-icons">point_of_sale</span> Customer Retail</a>
+      <a href="#dashboard" data-page="dashboard" class="active"><span class="material-icons">dashboard</span> Dashboard</a>
+      <a href="#inventory" data-page="inventory"><span class="material-icons">inventory_2</span> Inventory</a>
+      <a href="#move" data-page="move"><span class="material-icons">swap_horiz</span> Stock in / out</a>
+      <a href="#add" data-page="add"><span class="material-icons">add_box</span> Add product</a>
+      <a href="#categories" data-page="categories"><span class="material-icons">category</span> Categories</a>
+      <a href="#history" data-page="history"><span class="material-icons">history</span> History</a>
+      <a href="#settings" data-page="settings"><span class="material-icons">settings</span> Sync / Settings</a>
+    </nav>
+    <div class="foot">Data is saved in this browser.<br>Back up via CSV / JSON below.</div>
+  </aside>
+
+  <main id="main">
+    <div id="backNav" style="display: none;">
+      <button class="btn secondary" onclick="window.history.back()">
+        <span class="material-icons" style="font-size: 18px;">arrow_back</span> Go Back
+      </button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section id="page-dashboard" class="page active">
+      <h1>Shop Dashboard</h1>
+      <div class="quick-actions">
+        <button class="btn orange" onclick="go('add')"><span class="material-icons">add</span> Add New Product</button>
+        <button class="btn" onclick="go('move')"><span class="material-icons">swap_horiz</span> Stock In / Out</button>
+        <button class="btn secondary" onclick="go('inventory')"><span class="material-icons">visibility</span> View Inventory</button>
+      </div>
+      <div id="dash-empty" class="empty-msg" hidden>No products yet. Open <b>Add product</b> to enter your first tile.</div>
+      <div id="dash-body" hidden>
+        <div class="cards" id="metrics"></div>
+        <div class="grid2">
+          <div class="panel"><h3>Stock value by category</h3><div id="chart-cat"></div></div>
+          <div class="panel"><h3>Stock health</h3><div id="chart-health" class="donut-wrap"></div></div>
+        </div>
+        <div class="panel" id="panel-daily" hidden>
+          <h3>Boxes in vs out per day</h3>
+          <div class="daily-chart" id="chart-daily"></div>
+        </div>
+        <h2>Needs attention</h2>
+        <div class="tablewrap" id="alert-table"></div>
+      </div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section id="page-inventory" class="page">
+      <h1>Inventory</h1>
+      <div class="panel" style="padding: 16px; margin-bottom: 24px;">
+        <div class="filters" style="margin-bottom: 0;">
+          <div><label>Search name or SKU</label><input id="f-q" placeholder="Search..."></div>
+          <div><label>Category</label><select id="f-cat" multiple size="3"></select></div>
+          <div><label>Status</label><select id="f-stat" multiple size="3">
+            <option>OK</option><option>Low</option><option>Out of stock</option></select></div>
+        </div>
+      </div>
+      
+      <div class="caption" id="inv-count"></div>
+      <div class="tablewrap" id="inv-table"></div>
+
+      <h2>Edit or delete a product</h2>
+      <div class="panel">
+        <div class="form-grid">
+          <div class="full"><label>Product</label><select id="edit-sel"></select></div>
+          <div><label>Name</label><input id="e-name"></div>
+          <div><label>Size</label><input id="e-size"></div>
+          <div><label>Finish</label><input id="e-finish"></div>
+          <div><label>Cost price</label><input id="e-cost" type="number" step="0.01" min="0"></div>
+          <div><label>Selling price</label><input id="e-sell" type="number" step="0.01" min="0"></div>
+          <div><label>Reorder level (boxes)</label><input id="e-reorder" type="number" min="0"></div>
+          <div><label>Supplier</label><input id="e-supplier"></div>
+          <div><label>Shelf / location</label><input id="e-location"></div>
+          <div><label>Sq ft per box</label><input id="e-sqft" type="number" step="0.01" min="0"></div>
+        </div>
+        <div class="row" style="margin-top:24px;">
+          <button class="btn" id="e-save">Save changes</button>
+          <button class="btn danger" id="e-delete">Delete product</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 24px;">
+        <button class="btn secondary" onclick="window.print()"><span class="material-icons" style="font-size: 18px;">print</span> Print Inventory</button>
+        <button class="btn secondary" id="dl-csv"><span class="material-icons" style="font-size: 18px;">download</span> Excel Export</button>
+        <button class="btn secondary" id="dl-json"><span class="material-icons" style="font-size: 18px;">backup</span> JSON Backup</button>
+        <label class="btn secondary" style="margin:0;">
+          <span class="material-icons" style="font-size: 18px;">restore</span> Restore
+          <input type="file" id="up-json" accept=".json" hidden>
+        </label>
+      </div>
+    </section>
+
+    <!-- STOCK IN/OUT -->
+    <section id="page-move" class="page">
+      <h1>Stock In / Out</h1>
+      <div class="panel" style="max-width:600px;">
+        <div style="display:grid; gap:20px;">
+          <div><label>Product</label><select id="m-sel"></select></div>
+          <div><label>Action</label>
+            <select id="m-kind">
+              <option value="IN">Received (IN)</option>
+              <option value="OUT">Sold / used (OUT)</option>
+            </select>
+          </div>
+          <div><label>Boxes</label><input id="m-boxes" type="number" min="1" value="1"></div>
+          <div><label>Note (customer, invoice, supplier)</label><input id="m-note" placeholder="Optional details..."></div>
+          <button class="btn" id="m-go" style="margin-top: 8px;">Record Movement</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADD PRODUCT -->
+    <section id="page-add" class="page">
+      <h1>Add Product</h1>
+      <div class="panel">
+        <div class="form-grid">
+          <div><label>SKU / code *</label><input id="a-sku"></div>
+          <div><label>Name *</label><input id="a-name"></div>
+          <div><label>Category</label><select id="a-cat"></select></div>
+          <div><label>Size (e.g. 60x60 cm)</label><input id="a-size"></div>
+          <div><label>Finish</label><select id="a-finish">
+            <option>Glossy</option><option>Matt</option><option>Polished</option>
+            <option>Satin</option><option>Rustic</option><option>Other</option></select></div>
+          <div><label>Supplier</label><input id="a-supplier"></div>
+          <div><label>Shelf / location</label><input id="a-location"></div>
+          <div><label>Sq ft per box</label><input id="a-sqft" type="number" step="0.01" min="0" value="0"></div>
+          <div><label>Reorder level (boxes)</label><input id="a-reorder" type="number" min="0" value="5"></div>
+          <div><label>Cost price per box</label><input id="a-cost" type="number" step="0.01" min="0" value="0"></div>
+          <div><label>Selling price per box</label><input id="a-sell" type="number" step="0.01" min="0" value="0"></div>
+          <div><label>Opening stock (boxes)</label><input id="a-stock" type="number" min="0" value="0"></div>
+        </div>
+        <div class="row" style="margin-top:24px;"><button class="btn" id="a-go">Add Product</button></div>
+      </div>
+    </section>
+
+    <!-- CUSTOMER RETAIL (POS) -->
+    <section id="page-retail" class="page">
+      <h1>Customer Retail (POS)</h1>
+      <div class="grid2">
+        <div>
+          <div class="panel">
+            <h3 style="margin-bottom: 16px; color: var(--primary-dark);">1. Customer Details</h3>
+            <div style="display: grid; gap: 16px;">
+              <div><label>Customer Name</label><input id="r-name" placeholder="e.g. Ali Khan"></div>
+              <div><label>Contact Number</label><input id="r-phone" placeholder="e.g. 0300-1234567"></div>
+              <div><label>Address</label><input id="r-address" placeholder="e.g. Main Bazaar, Shop 12"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom: 16px; color: var(--primary-dark);">2. Add Products</h3>
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+              <div><label>Select Product</label><select id="r-prod"></select></div>
+              <div><label>Quantity (Boxes)</label><input id="r-qty" type="number" min="1" value="1"></div>
+            </div>
+            <button class="btn orange" style="margin-top: 16px; width: 100%;" id="r-add" onclick="addToCart()">Add to Invoice</button>
+          </div>
+          <div class="panel">
+            <h3 style="margin-bottom: 16px; color: var(--red);">3. Return Product (Refund)</h3>
+            <div style="display: grid; gap: 16px;">
+              <div><label>Select Product</label><select id="ret-prod"></select></div>
+              <div class="form-grid" style="grid-template-columns: 1fr 2fr;">
+                <div><label>Qty Returned</label><input id="ret-qty" type="number" min="1" value="1"></div>
+                <div><label>Reason / Note</label><input id="ret-note" placeholder="e.g. Damaged, Wrong size"></div>
+              </div>
+            </div>
+            <button class="btn danger" style="margin-top: 16px; width: 100%;" onclick="addReturnToInvoice()">Return &amp; Restock</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel" style="height: 100%; display: flex; flex-direction: column;">
+            <h3 style="margin-bottom: 16px; color: var(--primary-dark);">Current Invoice</h3>
+            <div class="tablewrap" style="flex: 1; min-height: 200px; box-shadow: none; border: 1px solid var(--line);">
+              <table id="r-cart-table">
+                <thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
+                <tbody id="r-cart-body"></tbody>
+              </table>
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+              <h2 style="margin: 0 0 16px 0;">Total: <span id="r-total" style="color: var(--primary-dark); font-weight: 700;">0</span></h2>
+              
+              <div class="row" style="justify-content: flex-end; margin-top: 12px; gap: 10px;">
+                <button class="btn secondary" onclick="clearCart()">Clear</button>
+               <button class="btn secondary" onclick="printCurrentCart()"><span class="material-icons" style="font-size: 18px;">print</span> Print</button>
+                <button class="btn" onclick="checkout()"><span class="material-icons" style="font-size: 18px;">check_circle</span> Complete Sale</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Past Invoices</h2>
+      <div class="tablewrap" id="r-history-table"></div>
+    </section>
+
+    <!-- CATEGORIES -->
+    <section id="page-categories" class="page">
+      <h1>Categories</h1>
+      
+      <div class="panel" style="max-width: 600px;">
+        <div class="row" style="margin-bottom: 24px; align-items: flex-end;">
+          <div style="flex: 1;">
+            <label>New Category</label>
+            <input id="c-name" placeholder="Enter new category name">
+          </div>
+          <button class="btn" id="c-add" style="height: 44px;">Add</button>
+        </div>
+
+        <div class="row" style="align-items: flex-end;">
+          <div style="flex: 1;">
+            <label>Edit Existing Category</label>
+            <select id="c-edit-sel"></select>
+          </div>
+          <button class="btn secondary" id="c-edit-btn" style="height: 44px;">Edit</button>
+        </div>
+      </div>
+
+      <div class="tablewrap" style="max-width:600px;" id="c-table"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="page-history" class="page">
+      <h1>History</h1>
+      <div class="panel" style="padding: 16px; margin-bottom: 24px;">
+        <label>Search Movements</label>
+        <input id="h-q" placeholder="Search by SKU, Name, Type, or Note..." style="max-width: 100%;">
+      </div>
+      <div class="caption" id="h-count"></div>
+      <div class="tablewrap" id="h-table"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="page-settings" class="page">
+      <h1>Sync / Settings</h1>
+      <p class="caption">Connect to your Tile Shop backend so the same inventory is shared by every device.</p>
+      <div class="panel" style="max-width:600px;">
+        <div style="display:grid; gap:20px;">
+          <div><label>Backend URL</label><input id="s-url" placeholder="https://tile-shop-api.onrender.com or http://192.168.1.10:8000"></div>
+          <div><label>API key (only if you set TILE_API_KEY on the server)</label><input id="s-key" placeholder="leave empty if none"></div>
+          <div class="row">
+            <button class="btn" id="s-connect">Connect &amp; sync this device</button>
+            <button class="btn secondary" id="s-pull" hidden>Pull latest from server</button>
+            <button class="btn danger" id="s-disconnect" hidden>Disconnect</button>
+          </div>
+          <div id="s-status" class="caption" style="font-weight: 500;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MOVED PRINT SLIP OUTSIDE OF #app SO IT CAN PRINT PROPERLY -->
+<div id="print-slip" style="display: none; padding: 20px; max-width: 400px; margin: 0 auto; font-family: monospace; color: #000;">
+  <h2 style="text-align: center; margin-bottom: 10px; font-family: sans-serif; font-weight: 700;">MIAN TILES</h2>
+  <p style="text-align: center; margin-bottom: 20px;">Customer Invoice</p>
+  <div id="slip-customer" style="margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px;"></div>
+  <div id="slip-date" style="margin-bottom: 15px;"></div>
+  <table style="width: 100%; text-align: left; font-size: 14px; border-collapse: collapse;">
+    <thead><tr style="border-bottom: 1px solid #000;"><th>Item</th><th>Qty</th><th>Amount</th></tr></thead>
+    <tbody id="slip-items"></tbody>
+  </table>
+  <h3 style="text-align: right; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">Total: <span id="slip-total"></span></h3>
+  <p style="text-align: center; margin-top: 20px; font-size: 12px;">Thank you for your business!</p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= HELPERS ================= */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => Number(n||0).toLocaleString('en-US', {maximumFractionDigits:0});
+const money = n => Number(n||0).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
+function toast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show' + (isErr ? ' error' : '');
+  clearTimeout(t._t); t._t = setTimeout(()=> t.className='', 3000);
+}
+
+/* ================= DATA LAYER ================= */
+const LS_KEY = 'tileShopData_v1';
+const DEFAULT_CATS = ["Floor Tiles","Wall Tiles","Bathroom","Kitchen","Outdoor","Porcelain","Ceramic","Mosaic","Accessories"];
+let uid = 1;
+const nid = () => Date.now() * 1000 + (uid++);
+
+function defaultData(){ return { categories: DEFAULT_CATS.map(n=>({id:nid(), name:n})), products: [], movements: [], invoices: [] }; }
+function load(){
+  try {
+    const d = JSON.parse(localStorage.getItem(LS_KEY));
+    if (d && Array.isArray(d.products)) {
+      if (!Array.isArray(d.categories)) d.categories = DEFAULT_CATS.map(n=>({id:nid(), name:n}));
+      if (!Array.isArray(d.movements)) d.movements = [];
+      if (!Array.isArray(d.invoices)) d.invoices = [];
+      return d;
+    }
+  } catch(e){}
+  return defaultData();
+}
+let remote = null;
+try { remote = JSON.parse(localStorage.getItem('tileShopRemote')); } catch(e){}
+if (!remote || typeof remote !== 'object') remote = { url:'http://127.0.0.1:8000', key:'', enabled:true };
+let pushTimer = null, pushBusy = false, pushAgain = false;
+function saveRemoteCfg(){ localStorage.setItem('tileShopRemote', JSON.stringify(remote)); }
+function apiFetch(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({'Content-Type':'application/json'},
+    remote.key ? {'X-API-Key': remote.key} : {}, opts.headers || {});
+  return fetch(remote.url.replace(/\/+$/,'') + path, opts);
+}
+function pushNow(){
+  if (!remote.enabled || pushBusy){ if (pushBusy) pushAgain = true; return; }
+  pushBusy = true;
+  apiFetch('/api/state', {method:'PUT', body: JSON.stringify(data)})
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(() => { setStatus('☁️ Connected — last saved ' + new Date().toLocaleTimeString(), true); })
+    .catch(err => setStatus('⚠️ Sync failed: ' + err.message + ' — kept locally; will retry.', false))
+    .finally(() => {
+      pushBusy = false;
+      if (pushAgain){ pushAgain = false; pushNow(); }
+    });
+}
+function save(){
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+  if (remote.enabled){ clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, 600); }
+}
+let data = load();
+
+function statusOf(p){
+  if (p.stockBoxes <= 0) return 'Out of stock';
+  if (p.stockBoxes <= p.reorderLevel) return 'Low';
+  return 'OK';
+}
+function catName(id){ const c = data.categories.find(c=>c.id===id); return c ? c.name : '—'; }
+function tableWrap(headers, rows){
+  return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+/* ================= NAVIGATION ================= */
+const sidebar = document.getElementById('sidebar'), overlay = document.getElementById('overlay');
+document.getElementById('menuBtn').onclick = () => {
+  if (window.innerWidth > 820) sidebar.classList.toggle('desktop-hidden');
+  else { sidebar.classList.add('open'); overlay.classList.add('show'); }
+};
+overlay.onclick = () => { sidebar.classList.remove('open'); overlay.classList.remove('show'); };
+function go(page){
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + page));
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.page === page));
+  location.hash = page;
+  sidebar.classList.remove('open'); overlay.classList.remove('show');
+  document.getElementById('backNav').style.display = (page === 'dashboard') ? 'none' : 'block';
+  render(page);
+}
+window.addEventListener('hashchange', () => {
+  const page = location.hash.slice(1) || 'dashboard';
+  const activePage = document.querySelector('.page.active');
+  if (activePage && activePage.id !== 'page-' + page) go(page);
+});
+document.querySelectorAll('#nav a').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.page); });
+
+/* ================= RENDERERS ================= */
+function productOptions(sel, withStock){
+  sel.innerHTML = data.products.map(p =>
+    `<option value="${p.id}">${esc(p.sku)} — ${esc(p.name)}${withStock ? ` (${p.stockBoxes} boxes)` : ''}</option>`).join('');
+}
+function fillCategorySelects(){
+  const opts = data.categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  document.getElementById('a-cat').innerHTML = opts;
+  document.getElementById('f-cat').innerHTML = data.categories.map(c=>`<option>${esc(c.name)}</option>`).join('');
+}
+
+function renderDashboard(){
+  const empty = data.products.length === 0;
+  document.getElementById('dash-empty').hidden = !empty;
+  document.getElementById('dash-body').hidden = empty;
+  if (empty) return;
+  const ps = data.products;
+  const sv = ps.reduce((s,p)=> s + p.stockBoxes * p.costPrice, 0);
+  const rv = ps.reduce((s,p)=> s + p.stockBoxes * p.sellPrice, 0);
+  const need = ps.filter(p => statusOf(p) !== 'OK').length;
+  const metricData = [
+    { label: 'Products', value: fmt(ps.length), icon: 'inventory', color: 'var(--primary-dark)' },
+    { label: 'Boxes in stock', value: fmt(ps.reduce((s,p)=>s+p.stockBoxes,0)), icon: 'layers', color: 'var(--primary-dark)' },
+    { label: 'Stock value', value: money(sv), icon: 'account_balance_wallet', color: 'var(--primary-dark)' },
+    { label: 'Potential profit', value: money(rv - sv), icon: 'trending_up', color: 'var(--secondary)' },
+    { label: 'Need reorder', value: fmt(need), icon: need > 0 ? 'warning' : 'check_circle', color: need > 0 ? 'var(--red)' : 'var(--primary-dark)' }
+  ];
+  document.getElementById('metrics').innerHTML = metricData.map(m => `
+    <div class="metric">
+      <span class="material-icons icon">${m.icon}</span>
+      <div class="label">${m.label}</div>
+      <div class="value" style="color: ${m.color}">${m.value}</div>
+    </div>`).join('');
+
+  const byCat = {};
+  ps.forEach(p => { const k = catName(p.categoryId); byCat[k] = (byCat[k]||0) + p.stockBoxes * p.costPrice; });
+  const entries = Object.entries(byCat).sort((a,b)=>a[1]-b[1]);
+  const max = Math.max(...entries.map(e=>e[1]), 1);
+  document.getElementById('chart-cat').innerHTML = entries.map(([k,v]) =>
+    `<div class="bar-row"><div class="cat" title="${esc(k)}">${esc(k)}</div>
+     <div class="track"><div class="fill" style="width:${Math.max(2, v/max*100)}%"></div></div>
+     <div class="amt">${money(v)}</div></div>`).join('');
+
+  const counts = { 'OK':0, 'Low':0, 'Out of stock':0 };
+  ps.forEach(p => counts[statusOf(p)]++);
+  const colors = { 'OK':'#C2A278', 'Low':'#8C7A6B', 'Out of stock':'#B5483A' };
+  const total = ps.length || 1; const R = 52, C = 2 * Math.PI * R;
+  let off = 0, segs = '';
+  Object.entries(counts).forEach(([k,v]) => {
+    const len = v/total * C;
+    segs += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${colors[k]}" stroke-width="20"
+      stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}"/>`;
+    off += len;
+  });
+  document.getElementById('chart-health').innerHTML =
+    `<svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="${R}" fill="none" stroke="#F5EFE9" stroke-width="20"/>${segs}
+     <text x="60" y="66" text-anchor="middle" font-size="20" font-weight="700" fill="#3A3330">${ps.length}</text></svg>
+     <div class="legend">${Object.entries(counts).map(([k,v]) =>
+       `<div><span class="dot" style="background:${colors[k]}"></span>${k}: <b>${v}</b></div>`).join('')}</div>`;
+
+  const alert = ps.filter(p => statusOf(p) !== 'OK');
+  document.getElementById('alert-table').innerHTML = alert.length === 0
+    ? `<div style="padding:24px; text-align:center; color:var(--primary-dark); font-weight:600; display:flex; justify-content:center; align-items:center; gap:8px;"><span class="material-icons">check_circle</span> Everything is above its reorder level.</div>`
+    : tableWrap(['SKU','Name','Category','Boxes','Reorder','Status','Supplier'],
+        alert.map(p => [esc(p.sku), esc(p.name), esc(catName(p.categoryId)), p.stockBoxes, p.reorderLevel,
+          `<span class="badge ${p.stockBoxes<=0?'out':'low'}">${statusOf(p)}</span>`, esc(p.supplier||'—')]));
+}
+
+function badge(p){ const s = statusOf(p); return `<span class="badge ${s==='OK'?'ok':s==='Low'?'low':'out'}">${s}</span>`; }
+
+function renderInventory(){
+  const q = document.getElementById('f-q').value.toLowerCase();
+  const cats = [...document.getElementById('f-cat').selectedOptions].map(o=>o.value);
+  const stats = [...document.getElementById('f-stat').selectedOptions].map(o=>o.value);
+  const list = data.products.filter(p =>
+    (!q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)) &&
+    (cats.length===0 || cats.includes(catName(p.categoryId))) &&
+    (stats.length===0 || stats.includes(statusOf(p))));
+  document.getElementById('inv-count').textContent = list.length + ' products';
+  const cols = ['SKU','Name','Category','Size','Finish','Supplier','Location','Sqft/box','Cost','Sell','Boxes','Reorder','Status','Action'];
+  document.getElementById('inv-table').innerHTML = list.length === 0
+    ? `<div style="padding:24px; text-align:center; color:var(--text-muted);">No products found.</div>`
+    : tableWrap(cols, list.map(p => [esc(p.sku),esc(p.name),esc(catName(p.categoryId)),esc(p.size||'—'),esc(p.finish||'—'),
+        esc(p.supplier||'—'),esc(p.location||'—'),p.sqftPerBox,money(p.costPrice),money(p.sellPrice),
+        `<b>${p.stockBoxes}</b>`,p.reorderLevel,badge(p),
+        `<div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button class="btn secondary sm" onclick="editProduct(${p.id})"><span class="material-icons" style="font-size:16px;">edit</span></button>
+          <button class="btn danger sm" onclick="deleteProduct(${p.id})"><span class="material-icons" style="font-size:16px;">delete</span></button>
+        </div>`]));
+  productOptions(document.getElementById('edit-sel'));
+  loadEditForm();
+}
+
+function editProduct(id){
+  const sel = document.getElementById('edit-sel');
+  sel.value = String(id);
+  loadEditForm();
+  sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function loadEditForm(){
+  const p = data.products.find(p => p.id === +document.getElementById('edit-sel').value);
+  if (!p) return;
+  const set = (id,v)=>document.getElementById(id).value = v ?? '';
+  set('e-name',p.name); set('e-size',p.size); set('e-finish',p.finish); set('e-cost',p.costPrice);
+  set('e-sell',p.sellPrice); set('e-reorder',p.reorderLevel); set('e-supplier',p.supplier);
+  set('e-location',p.location); set('e-sqft',p.sqftPerBox);
+}
+
+function renderCategories(){
+  const editSel = document.getElementById('c-edit-sel');
+  if (editSel) {
+    editSel.innerHTML = data.categories.map(c => 
+      `<option value="${c.id}">${esc(c.name)}</option>`
+    ).join('');
+  }
+  document.getElementById('c-table').innerHTML = data.categories.length === 0
+    ? `<div style="padding:24px; text-align:center; color:var(--text-muted);">No categories yet.</div>`
+    : tableWrap(['Category','Products'],
+        data.categories.map(c => [
+          esc(c.name), 
+          data.products.filter(p=>p.categoryId===c.id).length
+        ]));
+}
+
+document.getElementById('c-edit-btn').onclick = () => {
+  const sel = document.getElementById('c-edit-sel');
+  if (!sel.value) return; 
+  const id = +sel.value;
+  const cat = data.categories.find(c => c.id === id);
+  if (!cat) return;
+  const newName = prompt("Edit category name:", cat.name);
+  if (newName === null) return; 
+  const trimmed = newName.trim();
+  if (!trimmed) return toast('Category name cannot be empty.', true);
+  if (trimmed === cat.name) return; 
+  if (data.categories.some(c => c.id !== id && c.name.toLowerCase() === trimmed.toLowerCase())) {
+    return toast('Category already exists.', true);
+  }
+  cat.name = trimmed;
+  save(); 
+  renderCategories(); 
+  fillCategorySelects(); 
+  toast('Category updated.');
+};
+
+function renderHistory(){
+  const q = document.getElementById('h-q').value.toLowerCase();
+  const ms = [...data.movements].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const filtered = ms.filter(m => {
+    const p = data.products.find(p => p.id === m.productId);
+    const sku = p ? p.sku.toLowerCase() : '';
+    const name = p ? p.name.toLowerCase() : '';
+    const kind = m.kind.toLowerCase();
+    const note = (m.note || '').toLowerCase();
+    return !q || sku.includes(q) || name.includes(q) || kind.includes(q) || note.includes(q);
+  });
+  document.getElementById('h-count').textContent = filtered.length + ' movements found';
+  document.getElementById('h-table').innerHTML = filtered.length === 0
+    ? `<div style="padding:24px; text-align:center; color:var(--text-muted);">No movements found matching your search.</div>`
+    : tableWrap(['Date','SKU','Name','Type','Boxes','Note'],
+        filtered.map(m => { 
+          const p = data.products.find(p=>p.id===m.productId);
+          return [
+            esc((m.createdAt||'').replace('T',' ').slice(0,19)), 
+            esc(p?p.sku:'—'), 
+            esc(p?p.name:'(deleted)'),
+            `<span class="badge ${m.kind==='IN'?'ok':'low'}">${m.kind}</span>`, 
+            m.boxes, 
+            esc(m.note||'—')
+          ]; 
+        }));
+}
+
+function render(page){
+  fillCategorySelects();
+  if (page==='dashboard') renderDashboard();
+  else if (page==='inventory') renderInventory();
+  else if (page==='move') productOptions(document.getElementById('m-sel'), true);
+  else if (page==='categories') renderCategories();
+  else if (page==='history') renderHistory();
+  else if (page==='settings') refreshSettingsUI();
+  else if (page==='retail') renderRetail();
+}
+
+/* ================= CUSTOMER RETAIL (POS) ================= */
+let cart = [];
+
+function renderRetail() {
+  const sel = document.getElementById('r-prod');
+  sel.innerHTML = data.products.map(p =>
+    `<option value="${p.id}">${esc(p.name)} (${p.stockBoxes} left) - Rs ${p.sellPrice}</option>`).join('');
+
+  const retSel = document.getElementById('ret-prod');
+  if (retSel) {
+    retSel.innerHTML = data.products.map(p =>
+      `<option value="${p.id}">${esc(p.name)} (${p.stockBoxes} in stock)</option>`).join('');
+  }
+  renderCart();
+  renderInvoiceHistory();
+}
+
+function addToCart() {
+  const pid = +document.getElementById('r-prod').value;
+  const qty = Math.floor(+document.getElementById('r-qty').value);
+  const p = data.products.find(x => x.id === pid);
+  if (!p) return toast('Product not found', true);
+  if (qty <= 0) return toast('Enter valid quantity', true);
+  if (qty > p.stockBoxes) return toast(`Only ${p.stockBoxes} boxes available!`, true);
+
+  const existing = cart.find(c => c.productId === pid);
+  if (existing) {
+    if (existing.qty + qty > p.stockBoxes) return toast(`Cannot add more. Only ${p.stockBoxes} in stock.`, true);
+    existing.qty += qty;
+    existing.total = existing.qty * existing.price;
+  } else {
+    cart.push({ productId: pid, productName: p.name, qty, price: p.sellPrice, total: qty * p.sellPrice });
+  }
+  document.getElementById('r-qty').value = 1;
+  renderCart();
+}
+
+function removeFromCart(index){ cart.splice(index, 1); renderCart(); }
+function clearCart(){ cart = []; renderCart(); }
+
+function renderCart() {
+  const tbody = document.getElementById('r-cart-body');
+  if (cart.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-msg">No items added.</td></tr>`;
+  } else {
+    tbody.innerHTML = cart.map((c, i) => {
+      const isReturn = c.qty < 0;
+      const displayQty = isReturn ? Math.abs(c.qty) : c.qty;
+      const actionText = isReturn ? '<span style="color:var(--red); font-size:12px; font-weight:600;">(Return)</span>' : '';
+      return `<tr>
+        <td>${esc(c.productName)} ${actionText}</td>
+        <td style="color: ${isReturn ? 'var(--red)' : 'inherit'};"><b>${displayQty}</b></td>
+        <td>${money(c.price)}</td>
+        <td style="color: ${isReturn ? 'var(--red)' : 'inherit'};"><b>${money(c.total)}</b></td>
+        <td><button class="btn danger sm" onclick="removeFromCart(${i})"><span class="material-icons" style="font-size: 16px;">close</span></button></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('r-total').textContent = money(cart.reduce((s, c) => s + c.total, 0));
+}
+
+function addReturnToInvoice() {
+  const pid = +document.getElementById('ret-prod').value;
+  const qty = Math.floor(+document.getElementById('ret-qty').value);
+  const p = data.products.find(x => x.id === pid);
+  if (!p) return toast('Product not found', true);
+  if (qty <= 0) return toast('Enter a valid quantity to return', true);
+
+  const existing = cart.find(c => c.productId === pid);
+  if (existing) {
+    existing.qty -= qty;
+    existing.total = existing.qty * existing.price;
+    if (existing.qty === 0) cart = cart.filter(c => c.productId !== pid);
+  } else {
+    cart.push({ productId: pid, productName: p.name, qty: -qty, price: p.sellPrice, total: -(qty * p.sellPrice) });
+  }
+  document.getElementById('ret-qty').value = 1;
+  document.getElementById('ret-note').value = '';
+  renderCart();
+  toast(`Return of ${qty} boxes added to invoice.`);
+}
+
+function checkout() {
+  if (cart.length === 0) return toast('Cart is empty!', true);
+  const cName = document.getElementById('r-name').value.trim();
+  if (!cName) return toast('Customer Name is required!', true);
+
+  const phone = document.getElementById('r-phone').value.trim();
+  const address = document.getElementById('r-address').value.trim();
+  const total = cart.reduce((s, c) => s + c.total, 0);
+
+  const invId = nid();
+  const inv = {
+    id: invId, customerName: cName, contact: phone, address: address,
+    totalAmount: total, createdAt: new Date().toISOString(),
+    items: cart.map(c => ({ id: nid(), invoiceId: invId, productId: c.productId,
+      productName: c.productName, qty: c.qty, price: c.price, total: c.total }))
+  };
+
+  cart.forEach(c => {
+    const p = data.products.find(x => x.id === c.productId);
+    if (p) {
+      p.stockBoxes -= c.qty;
+      const isReturn = c.qty < 0;
+      data.movements.push({
+        id: nid(), productId: p.id,
+        kind: isReturn ? 'IN' : 'OUT',
+        boxes: Math.abs(c.qty),
+        note: isReturn ? `Return from ${cName}` : `Retail Sale to ${cName}`,
+        createdAt: new Date().toISOString()
+      });
+    }
+  });
+
+  if (!data.invoices) data.invoices = [];
+  data.invoices.push(inv);
+  save();
+
+  cart = [];
+  document.getElementById('r-name').value = '';
+  document.getElementById('r-phone').value = '';
+  document.getElementById('r-address').value = '';
+  renderRetail();
+  toast('Sale completed & stock updated!');
+}
+
+function printCurrentCart() {
+  if (cart.length === 0) {
+    return toast('Cart is empty. Add items to print.', true);
+  }
+  
+  const cName = document.getElementById('r-name').value.trim() || 'Walk-in Customer';
+  const phone = document.getElementById('r-phone').value.trim() || 'N/A';
+  const address = document.getElementById('r-address').value.trim() || 'N/A';
+  const total = cart.reduce((s, c) => s + c.total, 0);
+
+  const tempInv = {
+    customerName: cName,
+    contact: phone,
+    address: address,
+    totalAmount: total,
+    createdAt: new Date().toISOString(),
+    items: cart.map(c => ({
+      productName: c.productName,
+      qty: c.qty,
+      total: c.total
+    }))
+  };
+
+  generatePrintSlip(tempInv);
+  printSlip();
+}
+
+function generatePrintSlip(inv) {
+  document.getElementById('slip-customer').innerHTML =
+    `<b>Customer:</b> ${esc(inv.customerName)}<br><b>Contact:</b> ${esc(inv.contact || 'N/A')}<br><b>Address:</b> ${esc(inv.address || 'N/A')}`;
+  document.getElementById('slip-date').innerHTML =
+    `<b>Date:</b> ${inv.createdAt.replace('T', ' ').slice(0, 16)}`;
+  document.getElementById('slip-items').innerHTML = inv.items.map(i => `
+    <tr>
+      <td>${esc(i.productName)}</td>
+      <td>${i.qty}</td>
+      <td>${money(i.total)}</td>
+    </tr>`).join('');
+  document.getElementById('slip-total').textContent = `Rs ${money(inv.totalAmount)}`;
+}
+
+function printSlip() {
+  document.body.classList.add('printing-slip');
+  // Small delay ensures the DOM renders the receipt before the print dialog opens
+  setTimeout(() => {
+    window.print();
+  }, 150);
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('printing-slip'));
+
+function renderInvoiceHistory() {
+  if (!data.invoices) data.invoices = [];
+  const ms = [...data.invoices].reverse();
+  document.getElementById('r-history-table').innerHTML = ms.length === 0
+    ? `<div style="padding:24px; text-align:center; color:var(--text-muted);">No invoices yet.</div>`
+    : tableWrap(['Date', 'Customer', 'Contact', 'Items', 'Total (Rs)', 'Action'],
+        ms.map(inv => [
+          esc(inv.createdAt.replace('T', ' ').slice(0, 16)),
+          esc(inv.customerName),
+          esc(inv.contact || '—'),
+          inv.items.map(i => `${esc(i.productName)} (x${i.qty})`).join('<br>'),
+          `<b>${money(inv.totalAmount)}</b>`,
+          `<button class="btn secondary sm" onclick="reprintInvoice(${inv.id})"><span class="material-icons" style="font-size: 16px;">print</span></button>`
+        ]));
+}
+
+function reprintInvoice(id) {
+  const inv = data.invoices.find(x => x.id === id);
+  if (inv) { generatePrintSlip(inv); printSlip(); }
+}
+
+/* ================= ACTIONS ================= */
+document.getElementById('edit-sel').onchange = loadEditForm;
+document.getElementById('e-save').onclick = () => {
+  const p = data.products.find(p => p.id === +document.getElementById('edit-sel').value);
+  if (!p) return;
+  Object.assign(p, {
+    name: document.getElementById('e-name').value.trim() || p.name,
+    size: document.getElementById('e-size').value, finish: document.getElementById('e-finish').value,
+    costPrice: +document.getElementById('e-cost').value || 0, sellPrice: +document.getElementById('e-sell').value || 0,
+    reorderLevel: +document.getElementById('e-reorder').value || 0, supplier: document.getElementById('e-supplier').value,
+    location: document.getElementById('e-location').value, sqftPerBox: +document.getElementById('e-sqft').value || 0
+  });
+  save(); toast('Saved.'); renderInventory();
+};
+function deleteProduct(id) {
+  const p = data.products.find(p => p.id === id);
+  if (!p) return;
+  if (!confirm(`Delete "${p.name}" and its history?`)) return;
+  data.products = data.products.filter(p => p.id !== id);
+  data.movements = data.movements.filter(m => m.productId !== id);
+  save(); toast('Product deleted.'); renderInventory();
+}
+document.getElementById('e-delete').onclick = () => deleteProduct(+document.getElementById('edit-sel').value);
+
+document.getElementById('m-go').onclick = () => {
+  const pid = +document.getElementById('m-sel').value;
+  const p = data.products.find(p=>p.id===pid);
+  if (!p) return toast('Add a product first.', true);
+  const kind = document.getElementById('m-kind').value;
+  const boxes = Math.floor(+document.getElementById('m-boxes').value);
+  if (!(boxes > 0)) return toast('Enter at least 1 box.', true);
+  if (kind === 'OUT' && boxes > p.stockBoxes) return toast(`Only ${p.stockBoxes} boxes in stock.`, true);
+  p.stockBoxes += kind === 'IN' ? boxes : -boxes;
+  data.movements.push({ id: nid(), productId: pid, kind, boxes,
+    note: document.getElementById('m-note').value.trim(), createdAt: new Date().toISOString() });
+  save(); toast('Stock updated.');
+  document.getElementById('m-note').value = '';
+  productOptions(document.getElementById('m-sel'), true);
+};
+
+document.getElementById('a-go').onclick = () => {
+  const sku = document.getElementById('a-sku').value.trim(), name = document.getElementById('a-name').value.trim();
+  if (!sku || !name) return toast('SKU and name are required.', true);
+  if (data.products.some(p => p.sku.toLowerCase() === sku.toLowerCase()))
+    return toast(`SKU '${sku}' already exists.`, true);
+  const stock = Math.floor(+document.getElementById('a-stock').value) || 0;
+  const p = {
+    id: nid(), sku, name, categoryId: +document.getElementById('a-cat').value,
+    size: document.getElementById('a-size').value, finish: document.getElementById('a-finish').value,
+    supplier: document.getElementById('a-supplier').value, location: document.getElementById('a-location').value,
+    sqftPerBox: +document.getElementById('a-sqft').value || 0,
+    reorderLevel: Math.floor(+document.getElementById('a-reorder').value) || 0,
+    costPrice: +document.getElementById('a-cost').value || 0,
+    sellPrice: +document.getElementById('a-sell').value || 0,
+    stockBoxes: stock, createdAt: new Date().toISOString()
+  };
+  data.products.push(p);
+  if (stock > 0) data.movements.push({ id: nid(), productId: p.id, kind: 'IN', boxes: stock,
+    note: 'Opening stock', createdAt: new Date().toISOString() });
+  save(); toast(`Added ${name}.`);
+  document.querySelectorAll('#page-add input').forEach(i => {
+    if (i.type==='number') i.value = i.id==='a-reorder' ? 5 : 0; else i.value='';
+  });
+};
+
+document.getElementById('c-add').onclick = () => {
+  const n = document.getElementById('c-name').value.trim();
+  if (!n) return;
+  if (data.categories.some(c => c.name.toLowerCase() === n.toLowerCase()))
+    return toast('Category already exists.', true);
+  data.categories.push({ id: nid(), name: n }); save();
+  document.getElementById('c-name').value = '';
+  renderCategories(); fillCategorySelects(); toast('Category added.');
+};
+document.getElementById('c-name').addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('c-add').click();
+});
+
+['f-q','f-cat','f-stat'].forEach(id => document.getElementById(id).addEventListener('input', renderInventory));
+document.getElementById('h-q').addEventListener('input', renderHistory);
+
+/* ---- Excel export ---- */
+document.getElementById('dl-csv').onclick = () => {
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.download_excel().then(res => {
+      if (res && res.status === 'success') toast('Excel file saved successfully!');
+      else if (res && res.status === 'error') toast('Error saving file: ' + res.message, true);
+    }).catch(() => toast('Failed to trigger save dialog.', true));
+  } else {
+    window.location.href = (remote.url || 'http://127.0.0.1:8000') + '/api/export/excel';
+  }
+};
+
+/* ---- JSON backup (desktop + browser fallback) ---- */
+document.getElementById('dl-json').onclick = () => {
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.backup_json().then(res => {
+      if (res && res.status === 'success') toast('Backup saved successfully!');
+      else if (res && res.status === 'error') toast('Error: ' + res.message, true);
+    }).catch(() => toast('Failed to save backup.', true));
+  } else {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Mian_Tiles_Backup_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Backup downloaded.');
+  }
+};
+
+/* ---- JSON restore (works in browser & pywebview) ---- */
+document.getElementById('up-json').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!parsed || !Array.isArray(parsed.products) || !Array.isArray(parsed.categories))
+        return toast('Invalid backup file structure.', true);
+      if (!Array.isArray(parsed.invoices)) parsed.invoices = [];
+      if (!Array.isArray(parsed.movements)) parsed.movements = [];
+      data = parsed;
+      save();
+      toast('Backup restored successfully!');
+      const active = document.querySelector('.page.active');
+      if (active) render(active.id.replace('page-',''));
+    } catch (err) {
+      toast('Invalid backup file: ' + err.message, true);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ================= SETTINGS / SYNC ================= */
+function setStatus(msg, ok){
+  const el = document.getElementById('s-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = ok ? 'var(--primary-dark)' : 'var(--red)';
+}
+function refreshSettingsUI(){
+  document.getElementById('s-url').value = remote.url;
+  document.getElementById('s-key').value = remote.key;
+  document.getElementById('s-pull').hidden = !remote.enabled;
+  document.getElementById('s-disconnect').hidden = !remote.enabled;
+  document.getElementById('s-connect').textContent = remote.enabled ? 'Re-sync this device' : 'Connect & sync this device';
+  setStatus(remote.enabled ? '☁️ Connected to ' + remote.url : 'Not connected — working locally only.', true);
+}
+document.getElementById('s-connect').onclick = () => {
+  remote.url = document.getElementById('s-url').value.trim().replace(/\/+$/,'');
+  remote.key = document.getElementById('s-key').value.trim();
+  if (!remote.url) return toast('Enter the backend URL first.', true);
+  setStatus('Connecting…', true);
+  apiFetch('/api/health').then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status + (r.status===401 ? ' (wrong API key?)' : ''));
+    return apiFetch('/api/state', {method:'PUT', body: JSON.stringify(data)});
+  }).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    remote.enabled = true; saveRemoteCfg();
+    refreshSettingsUI();
+    setStatus('☁️ Connected — this device\'s data was sent to the server.', true);
+    toast('Connected & synced.');
+  }).catch(err => {
+    remote.enabled = false; saveRemoteCfg(); refreshSettingsUI();
+    setStatus('⚠️ Could not connect: ' + err.message, false);
+  });
+};
+document.getElementById('s-pull').onclick = () => {
+  setStatus('Pulling latest data…', true);
+  apiFetch('/api/state').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(d => {
+      if (!d || !Array.isArray(d.products)) throw new Error('bad data');
+      if (!Array.isArray(d.invoices)) d.invoices = [];
+      if (!Array.isArray(d.movements)) d.movements = [];
+      data = d;
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+      refreshSettingsUI();
+      setStatus('☁️ Latest data downloaded from server.', true);
+      toast('Data pulled from server.');
+      const active = document.querySelector('.page.active');
+      if (active) render(active.id.replace('page-',''));
+    })
+    .catch(err => setStatus('⚠️ Pull failed: ' + err.message, false));
+};
+document.getElementById('s-disconnect').onclick = () => {
+  remote.enabled = false; saveRemoteCfg(); refreshSettingsUI();
+  toast('Disconnected. Working locally.');
+};
+
+/* ================= INIT ================= */
+const ALL_PAGES = ['dashboard','inventory','move','add','categories','history','settings','retail'];
+if (remote.enabled && remote.url) {
+  apiFetch('/api/state')
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(d => {
+      if (d && Array.isArray(d.products)) {
+        if (!Array.isArray(d.invoices)) d.invoices = [];
+        if (!Array.isArray(d.movements)) d.movements = [];
+        data = d;
+        localStorage.setItem(LS_KEY, JSON.stringify(data));
+      }
+      const start = ALL_PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dashboard';
+      go(start);
+    })
+    .catch(() => {
+      const start = ALL_PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dashboard';
+      go(start);
+    });
+} else {
+  const start = ALL_PAGES.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'dashboard';
+  go(start);
+}
+</script>
+</body>
+</html>
